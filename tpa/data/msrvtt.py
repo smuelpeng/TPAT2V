@@ -45,15 +45,10 @@ def init_transform_dict(input_res=224):
 
 @dataclass
 class MSRVTTDataModuleConfig:
-    root_dir: Any = ""
-    version: str = "v1"
-    # image_suffix: str = "webp"
-    video_dir: str = "videos"
+    videos_dir: str = "videos"
     split_type: str = "train"
-
     dir: str = "data/MSRVTT"
     db_file: str = "MSRVTT_data.json"
-    test_file_pth: str = "/MSRVTT_JSFUSION_test.csv"
     train_file: str = "9k"
     train_csv: str = "MSRVTT_train.9k.csv"
     test_csv: str = "MSRVTT_JSFUSION_test.csv"
@@ -99,12 +94,8 @@ class MSRVTTDataset(Dataset):
             imgs, idxs = VideoCapture.load_frames_from_video(video_path,
                                                              self.config.num_frames,
                                                              self.config.video_sample_type)
-
-
             if self.img_transforms is not None:
                 imgs = self.img_transforms(imgs)
-
-
             return {
                 'video_id': video_id,
                 'video': imgs,
@@ -194,27 +185,27 @@ class MSRVTTDataModule(pl.LightningDataModule):
     def predict_dataloader(self) -> DataLoader:
         return self.test_dataloader()
 
-if __name__ == "__main__":
-    conf = {
-        "root_dir": "data/MSRVTT",
-        "version": "v1",
-        "video_dir": "videos",
-        "split_type": "train",
-        "dir": "data/MSRVTT",
-        "db_file": "MSRVTT_data.json",
-        "test_file_pth": "/MSRVTT_JSFUSION_test.csv",
-        "train_file": "9k",
-        "train_csv": "MSRVTT_train.9k.csv",
-        "test_csv": "MSRVTT_JSFUSION_test.csv",
-        "input_res": 224
-    }
-    datasets = {
-        "MSRVTT": MSRVTTDataset(
-            MSRVTTDataModuleConfig(**conf),
-            "train",
-        ),
-    }
-    for name, dataset in datasets.items():
-        print(f"{name}: {len(dataset)}")
-        for i in range(3):
-            print(dataset[i])
+# if __name__ == "__main__":
+#     conf = {
+#         "root_dir": "data/MSRVTT",
+#         "version": "v1",
+#         "video_dir": "videos",
+#         "split_type": "train",
+#         "dir": "data/MSRVTT",
+#         "db_file": "MSRVTT_data.json",
+#         "test_file_pth": "/MSRVTT_JSFUSION_test.csv",
+#         "train_file": "9k",
+#         "train_csv": "MSRVTT_train.9k.csv",
+#         "test_csv": "MSRVTT_JSFUSION_test.csv",
+#         "input_res": 224
+#     }
+#     datasets = {
+#         "MSRVTT": MSRVTTDataset(
+#             MSRVTTDataModuleConfig(**conf),
+#             "train",
+#         ),
+#     }
+#     for name, dataset in datasets.items():
+#         print(f"{name}: {len(dataset)}")
+#         for i in range(3):
+#             print(dataset[i])

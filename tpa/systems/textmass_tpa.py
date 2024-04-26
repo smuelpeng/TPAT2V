@@ -19,15 +19,16 @@ import time
 import numpy as np
 
 
-@dataclass
-class TextMassLossConfig(BaseLossConfig):
-    lambda_support_set: Any = 0.0
+# @dataclass
+# class TextMassLossConfig(BaseLossConfig):
+#     lambda_support_set: Any = 0.0
 
     
 class TextMassTPA(BaseSystem):
     @dataclass
     class Config(BaseSystem.Config):
-        loss: TextMassLossConfig = TextMassLossConfig()
+        # loss: TextMassLossConfig = TextMassLossConfig()
+        loss: dict = field(default_factory=dict)
 
         tokenizer_cls: str = ""
         tokenizer: dict = field(default_factory=dict)
@@ -35,10 +36,10 @@ class TextMassTPA(BaseSystem):
         backbone_cls: str = ""
         backbone: dict = field(default_factory=dict)
 
-        post_processor_cls: str = ""
-        post_processor: dict = field(default_factory=dict)
+        # post_processor_cls: str = ""
+        # post_processor: dict = field(default_factory=dict)
 
-        pool_type: str = "mean"
+        # pool_type: str = "mean"
         save_memory_mode: bool = False 
         stochasic_trials: int = 1
         DSL: bool = False
@@ -50,8 +51,8 @@ class TextMassTPA(BaseSystem):
     def configure(self) -> None:
         self.tokenizer = tpa.find(self.cfg.tokenizer_cls)(self.cfg.tokenizer)
         self.backbone = tpa.find(self.cfg.backbone_cls)(self.cfg.backbone)
-        self.post_processor = tpa.find(self.cfg.post_processor_cls)(self.cfg.post_processor)
-        self.pooling_type = self.cfg.pool_type
+        # self.post_processor = tpa.find(self.cfg.post_processor_cls)(self.cfg.post_processor)
+        # self.pooling_type = self.cfg.pool_type
         self.loss = CLIPLoss()
         self.metrics = tpa.find(self.cfg.metrics)()
         super().configure()

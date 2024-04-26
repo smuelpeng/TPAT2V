@@ -16,13 +16,13 @@ class CLIPStochastic(BaseModule):
     @dataclass
     class Config(BaseModule.Config):    
         clip_arch: str = 'ViT-B/32'
-        num_frames: int = 16
         embed_dim: int = 512
         num_mha_heads: int = 1
         transformer_dropout: float = 0.3
         num_frames: int = 12
         stochastic_prior: str = 'uniform01'
         stochastic_prior_std: float = 1.0        
+        input_res: int = 224
         
     cfg: Config
 
@@ -43,7 +43,7 @@ class CLIPStochastic(BaseModule):
         batch_size = data['video'].shape[0]
         text_data = data['text']
         video_data = data['video']
-        video_data = video_data.reshape(-1, 3, self.config.input_res, self.config.input_res)
+        video_data = video_data.reshape(-1, 3, self.cfg.input_res, self.cfg.input_res)
 
         if is_train:
 
@@ -52,7 +52,7 @@ class CLIPStochastic(BaseModule):
 
 
 
-            video_features = video_features.reshape(batch_size, self.config.num_frames, -1) # [bs, #F, 512]
+            video_features = video_features.reshape(batch_size, self.cfg.num_frames, -1) # [bs, #F, 512]
 
             video_features_pooled = self.pool_frames(text_features, video_features)
 
@@ -70,9 +70,7 @@ class CLIPStochastic(BaseModule):
             text_features = self.clip.get_text_features(**text_data)
             video_features = self.clip.get_image_features(video_data)
 
-
-
-            video_features = video_features.reshape(batch_size, self.config.num_frames, -1)
+            video_features = video_features.reshape(batch_size, self.cfg.num_frames, -1)
             video_features_pooled = self.pool_frames(text_features, video_features)
 
             # @WJM: re-parameterization for text (independent of the text-cond pooling)

@@ -64,4 +64,183 @@ def main(args, extras) -> None:
         from jaxtyping import install_import_hook
 
         install_import_hook("tpa", "typeguard.typechecked")
+        
+    import tpa
+    from tpa.systems.base import BaseSystem
+    from tpa.utils.callbacks import (
+        CodeSnapshotCallback,
+        ConfigSnapshotCallback,
+        CustomProgressBar,
+        ProgressCallback,
+    )
+    from tpa.utils.config import ExperimentConfig, load_config
+    from tpa.utils.misc import get_rank, time_recorder
+    from tpa.utils.typing import Optional
+
+    logger = logging.getLogger("pytorch_lightning")
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+    if args.benchmark:
+        time_recorder.enable(True)
+
+    for handler in logger.handlers:
+        if handler.stream == sys.stderr:  # type: ignore
+            if not args.gradio:
+                handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+                handler.addFilter(ColoredFilter())
+            else:
+                handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))        
+
+    # parse YAML config to OmegaConf
+    cfg: ExperimentConfig
+    cfg = load_config(args.config, cli_args=extras, n_gpus=n_gpus)
+
+    # set a different seed for each device
+    pl.seed_everything(cfg.seed + get_rank(), workers=True)
+
+    dm = tpa.find(cfg.data_cls)(cfg.data)
+    system: BaseSystem = tpa.find(cfg.system_cls)(
+        cfg.system, resumed=cfg.resume is not None
+    )
+    system.set_save_dir(os.path.join(cfg.trial_dir, "save"))
+
+
+    callbacks = []
+    if args.train:
+        callbacks += [
+            ModelCheckpoint(
+                dirpath=os.path.join(cfg.trial_dir, "ckpts"), **cfg.checkpoint
+            ),
+            LearningRateMonitor(logging_interval="step"),
+            # CodeSnapshotCallback(
+            #     os.path.join(cfg.trial_dir, "code"), use_version=False
+            # ),
+            ConfigSnapshotCallback(
+                args.config,
+                cfg,
+                os.path.join(cfg.trial_dir, "configs"),
+                use_version=False,
+            ),
+        ]
+        if args.gradio:
+            callbacks += [
+                ProgressCallback(save_path=os.path.join(cfg.trial_dir, "progress"))
+            ]
+        else:
+            callbacks += [CustomProgressBar(refresh_rate=1)]
+
+    def write_to_text(file, lines):
+        with open(file, "w") as f:
+            for line in lines:
+                f.write(line + "\n")
+
+    loggers = []
+    if args.train:
+        # make tensorboard logging dir to suppress warning
+        rank_zero_only(
+            lambda: os.makedirs(os.path.join(cfg.trial_dir, "tb_logs"), exist_ok=True)
+        )()
+        loggers += [
+            TensorBoardLogger(cfg.trial_dir, name="tb_logs"),
+        ]
+        if args.wandb:
+            wandb_logger = WandbLogger(project="LRM", name=f"{cfg.name}-{cfg.tag}")
+            system._wandb_logger = wandb_logger
+            loggers += [wandb_logger]
+        rank_zero_only(
+            lambda: write_to_text(
+                os.path.join(cfg.trial_dir, "cmd.txt"),
+                ["python " + " ".join(sys.argv), str(args)],
+            )
+        )()
+
+    trainer = Trainer(
+        callbacks=callbacks,
+        logger=loggers,
+        inference_mode=False,
+        accelerator="gpu",
+        devices=devices,
+        **cfg.trainer,
+    )
+
+    def set_system_status(system: BaseSystem, ckpt_path: Optional[str]):
+        if ckpt_path is None:
+            return
+        ckpt = torch.load(ckpt_path, map_location="cpu")
+        system.set_resume_status(ckpt["epoch"], ckpt["global_step"])
+    if args.train:
+        trainer.fit(system, datamodule=dm, ckpt_path=cfg.resume)
+        # trainer.test(system, datamodule=dm)
+        if args.gradio:
+            # also export assets if in gradio mode
+            trainer.predict(system, datamodule=dm)
+    elif args.validate:
+        # manually set epoch and global_step as they cannot be automatically resumed
+        set_system_status(system, cfg.resume)
+        trainer.validate(system, datamodule=dm, ckpt_path=cfg.resume)
+    # elif args.test:
+    #     # manually set epoch and global_step as they cannot be automatically resumed
+    #     set_system_status(system, cfg.resume)
+    #     trainer.test(system, datamodule=dm, ckpt_path=cfg.resume)
+    # elif args.export:
+    #     set_system_status(system, cfg.resume)
+    #     trainer.predict(system, datamodule=dm, ckpt_path=cfg.resume)
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", required=True, help="path to config file")
+    parser.add_argument(
+        "--gpu",
+        default="0",
+        help="GPU(s) to be used. 0 means use the 1st available GPU. "
+        "1,2 means use the 2nd and 3rd available GPU. "
+        "If CUDA_VISIBLE_DEVICES is set before calling `launch.py`, "
+        "this argument is ignored and all available GPUs are always used.",
+    )
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--train", action="store_true")
+    group.add_argument("--validate", action="store_true")
+    group.add_argument("--test", action="store_true")
+    group.add_argument("--export", action="store_true")
+
+    parser.add_argument("--wandb", action="store_true", help="if true, log to wandb")
+
+    parser.add_argument(
+        "--gradio", action="store_true", help="if true, run in gradio mode"
+    )
+
+    parser.add_argument(
+        "--verbose", action="store_true", help="if true, set logging level to DEBUG"
+    )
+
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="if true, set to benchmark mode to record running times",
+    )
+
+    parser.add_argument(
+        "--typecheck",
+        action="store_true",
+        help="whether to enable dynamic type checking",
+    )
+
+    args, extras = parser.parse_known_args()
+
+    if args.gradio:
+        # FIXME: no effect, stdout is not captured
+        with contextlib.redirect_stdout(sys.stderr):
+            main(args, extras)
+    else:
+        main(args, extras)
+
+
+
+
+
+
+
 
