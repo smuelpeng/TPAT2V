@@ -1,0 +1,22 @@
+# torch
+torch
+torchvision
+
+numpy
+einops
+lightning
+OmegaConf
+jaxtyping
+typeguard
+gradio
+Pillow
+matplotlib
+opencv-python
+imageio
+imageio[ffmpeg]
+einops
+git+https://github.com/facebookresearch/xformers.git
+bitsandbytes
+transformers==4.37.0
+wandb
+tqdm
