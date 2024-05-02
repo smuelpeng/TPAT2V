@@ -1,4 +1,4 @@
-name: text_mass_
+name: text_mass_baseline
 tag: "v1"
 exp_root_dir: "outputs"
 seed: 0
@@ -11,22 +11,29 @@ data:
   train_csv: "data/MSRVTT/MSRVTT_train.9k.csv"
   test_csv: "data/MSRVTT/MSRVTT_JSFUSION_test.csv"
   input_res:  224
+  batch_size: 32
+  eval_batch_size: 32
+  num_workers: 8
+  num_frames: 12
+  video_sample_type: uniform
+
 
 system_cls: tpa.systems.textmass_tpa.TextMassTPA
 system:
   loss:
-    lambda_support_set: 0.0
+    lambda_support_set: 0.8
+
   tokenizer_cls: tpa.models.tokenizers.clip_tokenizer.CLIPTOKENIZER
-  tokenize:
+  tokenizer:
     clip_arch: 'openai/clip-vit-base-patch32'
 
   backbone_cls: tpa.models.transformers.clip_stochastic.CLIPStochastic
   backbone:
-    clip_arch: 'ViT-B/32'
+    clip_arch: ViT-B/32
     num_frames:  12
     embed_dim:  512
     num_mha_heads:  1
-    transformer_dropout: float = 0.3
+    transformer_dropout: 0.3
     stochastic_prior: 'uniform01'
     stochastic_prior_std: 1.0        
     input_res: 224
@@ -38,15 +45,48 @@ system:
   DSL: False
   metrics:  tpa.utils.metrics.t2v_metrics
 
+  # optimizer definition
+  # you can set different learning rates separately for each group of parameters, but note that if you do this you should specify EVERY trainable parameters
+  optimizer:
+    name: AdamW
+    params: 
+      clip:
+        lr: 1e-6
+        weight_decay: 0.2
+    args:
+      lr: 3e-5
+      betas: [0.9, 0.95]
+      weight_decay: 0.2
+
+  scheduler:
+    name: SequentialLR
+    interval: step
+    schedulers:
+      - name: LinearLR
+        interval: step
+        args:
+          start_factor: 1e-6
+          end_factor: 1.0
+          total_iters: 100
+      - name: CosineAnnealingLR
+        interval: step
+        args:
+          T_max: 62700 # 209 * 300
+          eta_min: 0.0
+    milestones: [3000]
+
+
 trainer:
   max_epochs: 5
   log_every_n_steps: 1
-  num_sanity_val_steps: 1
+  # num_sanity_val_steps: 1
+  val_check_interval: 500
   check_val_every_n_epoch: 1
+  # check_val_every_n_step: 100
   enable_progress_bar: true
   # precision: bf16-mixed
   # gradient_clip_val: 1.0
+  strategy: ddp_find_unused_parameters_true # necessary for DMTet
 
-
-checkpoints:
+checkpoint:
   every_n_epochs: 1 # never saved

@@ -37,7 +37,7 @@ OmegaConf.register_new_resolver("calc_num_train_steps", calc_num_train_steps)
 # ============== Automatic Name Resolvers =============== #
 def get_naming_convention(cfg):
     # TODO
-    name = f"lrm_{cfg.system.backbone.num_layers}"
+    name = f"tpa_{cfg.system.backbone.num_layers}"
     return name
 
 
@@ -133,7 +133,7 @@ def load_config(
         scfg.timestamp = ""
         if scfg.use_timestamp:
             if scfg.n_gpus > 1:
-                lrm.warn(
+                tpa.warn(
                     "Timestamp is disabled when using multiple GPUs, please make sure you have a unique tag."
                 )
             else:

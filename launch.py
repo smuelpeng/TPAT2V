@@ -103,7 +103,9 @@ def main(args, extras) -> None:
         cfg.system, resumed=cfg.resume is not None
     )
     system.set_save_dir(os.path.join(cfg.trial_dir, "save"))
-
+    rank_zero_only(
+        lambda: os.makedirs(os.path.join(cfg.trial_dir, "save"), exist_ok=True)
+    )()
 
     callbacks = []
     if args.train:
@@ -144,7 +146,7 @@ def main(args, extras) -> None:
             TensorBoardLogger(cfg.trial_dir, name="tb_logs"),
         ]
         if args.wandb:
-            wandb_logger = WandbLogger(project="LRM", name=f"{cfg.name}-{cfg.tag}")
+            wandb_logger = WandbLogger(project="TPA", name=f"{cfg.name}-{cfg.tag}")
             system._wandb_logger = wandb_logger
             loggers += [wandb_logger]
         rank_zero_only(
@@ -170,6 +172,7 @@ def main(args, extras) -> None:
         system.set_resume_status(ckpt["epoch"], ckpt["global_step"])
     if args.train:
         trainer.fit(system, datamodule=dm, ckpt_path=cfg.resume)
+        trainer.validate(system, datamodule=dm)
         # trainer.test(system, datamodule=dm)
         if args.gradio:
             # also export assets if in gradio mode

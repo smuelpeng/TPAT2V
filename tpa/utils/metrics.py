@@ -240,7 +240,7 @@ def t2v_metrics(sims):
     mask = ~ torch.logical_or(torch.isinf(valid_check), torch.isnan(valid_check))
     valid_ranks = ranks[mask]
 
-    return compute_metrics(valid_ranks.numpy())
+    return compute_metrics(valid_ranks.cpu().numpy())
 
 
 def v2t_metrics(sims):

@@ -28,7 +28,7 @@ from ..utils.video_capture import VideoCapture
 
 def init_transform_dict(input_res=224):
     tsfm_dict = {
-        'clip_test': transforms.Compose([
+        'clip_val': transforms.Compose([
             transforms.Resize(input_res, interpolation=Image.BICUBIC),
             transforms.CenterCrop(input_res),
             transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
@@ -53,6 +53,12 @@ class MSRVTTDataModuleConfig:
     train_csv: str = "MSRVTT_train.9k.csv"
     test_csv: str = "MSRVTT_JSFUSION_test.csv"
     input_res: int = 224
+    eval_batch_size: int = 32
+    batch_size: int = 32
+    num_workers: int = 8
+    num_frames: int = 12
+    video_sample_type: str = "uniform"
+
 
 
 class MSRVTTDataset(Dataset):
@@ -185,27 +191,3 @@ class MSRVTTDataModule(pl.LightningDataModule):
     def predict_dataloader(self) -> DataLoader:
         return self.test_dataloader()
 
-# if __name__ == "__main__":
-#     conf = {
-#         "root_dir": "data/MSRVTT",
-#         "version": "v1",
-#         "video_dir": "videos",
-#         "split_type": "train",
-#         "dir": "data/MSRVTT",
-#         "db_file": "MSRVTT_data.json",
-#         "test_file_pth": "/MSRVTT_JSFUSION_test.csv",
-#         "train_file": "9k",
-#         "train_csv": "MSRVTT_train.9k.csv",
-#         "test_csv": "MSRVTT_JSFUSION_test.csv",
-#         "input_res": 224
-#     }
-#     datasets = {
-#         "MSRVTT": MSRVTTDataset(
-#             MSRVTTDataModuleConfig(**conf),
-#             "train",
-#         ),
-#     }
-#     for name, dataset in datasets.items():
-#         print(f"{name}: {len(dataset)}")
-#         for i in range(3):
-#             print(dataset[i])

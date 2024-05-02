@@ -17,5 +17,5 @@ class CLIPTOKENIZER(BaseModule):
         from transformers import CLIPTokenizer
         self.tokenizer = CLIPTokenizer.from_pretrained(self.cfg.clip_arch, TOKENIZERS_PARALLELISM=False)
 
-    def forward(self, data, return_all_frames=False, is_train=True):
-        return self.tokenizer(data)
+    def forward(self, *args, **kwargs):
+        return self.tokenizer(*args, **kwargs)

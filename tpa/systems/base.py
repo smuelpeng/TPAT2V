@@ -13,18 +13,17 @@ from ..utils.base import (
 )
 from ..utils.config import parse_structured
 from ..utils.misc import C, cleanup, get_device, load_module_weights
-# from ..utils.saving import SaverMixin
+from ..utils.saving import SaverMixin
 from ..utils.typing import *
 
-@dataclass
-class BaseLossConfig:
-    pass
+# @dataclass
+# class BaseLossConfig:
+#     pass
 
 
-class BaseSystem(pl.LightningModule, Updateable):
+class BaseSystem(pl.LightningModule, Updateable, SaverMixin):
     @dataclass
     class Config:
-        loss: BaseLossConfig = BaseLossConfig()
         optimizer: dict = field(default_factory=dict)
         scheduler: Optional[dict] = None
         weights: Optional[str] = None

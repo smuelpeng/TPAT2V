@@ -63,7 +63,7 @@ class MultiHeadedAttention(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, config: Config):
+    def __init__(self, config):
         super(Transformer, self).__init__()
         self.embed_dim = config.embed_dim
         dropout = config.transformer_dropout

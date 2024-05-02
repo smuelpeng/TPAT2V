@@ -27,7 +27,7 @@ class CLIPStochastic(BaseModule):
     cfg: Config
 
     def configure(self) -> None:
-        super.configure()
+        super().configure()
         from transformers import CLIPModel
         if self.cfg.clip_arch == 'ViT-B/32':
             self.clip = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
@@ -66,7 +66,6 @@ class CLIPStochastic(BaseModule):
             return text_features, video_features_pooled,  text_features_stochstic, text_mean, log_var
 
         else:
-
             text_features = self.clip.get_text_features(**text_data)
             video_features = self.clip.get_image_features(video_data)
 
